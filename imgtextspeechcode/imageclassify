@@ -1,0 +1,74 @@
+import cv2
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Load CIFAR-10 dataset
+(x_train, y_train), (x_test, y_test) = keras.datasets.cifar10.load_data()
+x_train, x_test = x_train / 255.0, x_test / 255.0
+
+class_names = ['Plane', 'Car', 'Bird', 'Cat', 'Deer', 'Dog', 'Frog', 'Horse', 'Ship', 'Truck']
+
+# Visualize some training images
+for i in range(16):
+    plt.subplot(4, 4, i + 1)
+    plt.xticks([])
+    plt.yticks([])
+    plt.imshow(x_train[i], cmap=plt.cm.binary)
+    plt.xlabel(class_names[y_train[i][0]])
+plt.show()
+
+# Reduce dataset size for faster training
+x_train, y_train = x_train[:20000], y_train[:20000]
+x_test, y_test = x_test[:4000], y_test[:4000]
+
+# Define the model
+model = keras.Sequential([
+    keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(32, 32, 3)),
+    keras.layers.MaxPooling2D((2, 2)),
+    keras.layers.BatchNormalization(),
+
+    keras.layers.Conv2D(64, (3, 3), activation='relu'),
+    keras.layers.MaxPooling2D((2, 2)),
+    keras.layers.BatchNormalization(),
+
+    keras.layers.Conv2D(128, (3, 3), activation='relu'),
+    keras.layers.Flatten(),
+    keras.layers.Dense(128, activation='relu'),
+    keras.layers.Dropout(0.5),
+    keras.layers.Dense(10, activation='softmax')
+])
+
+# Compile and train the model
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+model.fit(x_train, y_train, epochs=10, validation_data=(x_test, y_test))
+
+# Evaluate the model
+test_loss, test_acc = model.evaluate(x_test, y_test)
+print(f"Test accuracy: {test_acc:.4f}")
+
+# Save the model
+model.save("cifar10_cnn_1.h5")
+
+try:
+    img = cv2.imread('p.jpg')
+    if img is None:
+        raise FileNotFoundError("Image file not found or could not be opened.")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img = cv2.resize(img, (32, 32))
+    img = img / 255.0
+
+    # Make a prediction
+    prediction = model.predict(np.array([img]))
+    index = np.argmax(prediction)
+    print(f'Prediction is {class_names[index]}')
+
+    # Display the image with the prediction
+    plt.imshow(img, cmap=plt.cm.binary)
+    plt.title(f'Prediction: {class_names[index]}')
+    plt.show()
+except Exception as e:
+    print(f"Error: {e}")
